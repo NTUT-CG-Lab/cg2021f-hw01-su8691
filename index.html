@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>高等計算機圖學 HW1</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+		
+	</head>
+	<body>
+		
+		<div id="info" sytle ='position:absolute; top:0;'></div>
+
+		<script src="./opentype.min.js"></script>
+		<script src="./three.min.js"></script>
+		<script src="./TTFLoader.js"></script>
+		<script src="./scoreoutputer.min.js"></script>
+		
+		
+		
+		<script>
+			
+			let container;
+			let camera, cameraTarget, scene, renderer;
+			let group, textMesh1, textMesh2, textGeo, material;
+			let firstLetter = true;
+
+			let text = ' ';
+			const height = 3,
+				size = 15,
+				hover = 30,
+				curveSegments = 4,
+				bevelThickness = 1,
+				bevelSize = 1.5;
+
+			let font = null;
+			const mirror = true;
+
+			let targetRotation = 0;
+			let targetRotationOnPointerDown = 0;
+
+			let pointerX = 0;
+			let pointerXOnPointerDown = 0;
+
+			let windowHalfX = window.innerWidth / 2;
+
+			init();
+			animate();
+			score();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				// CAMERA
+
+				camera = new THREE.PerspectiveCamera( 30, window.innerWidth / window.innerHeight, 1, 1500 );
+				camera.position.set( 0, 400, 700 );
+
+				cameraTarget = new THREE.Vector3( 0, 150, 0 );
+
+				// SCENE
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0x000000 );
+				scene.fog = new THREE.Fog( 0x000000, 250, 1400 );
+
+				// LIGHTS
+
+				const dirLight = new THREE.DirectionalLight( 0xffffff, 0.125 );
+				dirLight.position.set( 0, 0, 1 ).normalize();
+				scene.add( dirLight );
+
+				const pointLight = new THREE.PointLight( 0xffffff, 2.5 );
+				pointLight.position.set( 300, 300, 300 );
+				pointLight.color.setHSL( Math.random(), 1, 0.5 );
+				scene.add( pointLight );
+
+				material = new THREE.MeshPhongMaterial( { color: 0xffffff, flatShading: false } );
+
+				group = new THREE.Group();
+				group.position.y = 100;
+
+				scene.add( group );
+
+				const loader = new THREE.TTFLoader();
+				
+				loader.load( "font.ttf", function ( json ) {
+					console.log(json)
+					font = new THREE.Font( json );
+					createText();
+
+				} );
+
+				const plane = new THREE.Mesh(
+					new THREE.PlaneGeometry( 10000, 10000 ),
+					new THREE.MeshBasicMaterial( { color: 0xffffff, opacity: 0.5, transparent: true } )
+				);
+				plane.position.y = 100;
+				plane.rotation.x = - Math.PI / 2;
+				scene.add( plane );
+
+				// RENDERER
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+
+				// EVENTS
+
+				container.style.touchAction = 'none';
+				container.addEventListener( 'pointerdown', onPointerDown );
+
+				document.addEventListener( 'keypress', onDocumentKeyPress );
+				document.addEventListener( 'keydown', onDocumentKeyDown );
+
+				window.addEventListener( 'resize', onWindowResize );
+				
+				// new plane
+ 				
+				
+				const plane1 = new THREE.Mesh( new THREE.PlaneGeometry( 300, 200 )
+					, new THREE.MeshBasicMaterial( {color: 0xf5dada, side: THREE.DoubleSide} ) );
+				
+				plane1.position.x = 0;
+				plane1.position.y = 110;
+				plane1.position.z = 100;
+				
+				plane1.rotation.y = 0 ;
+				plane1.rotation.x = 30 ;
+				plane1.rotation.z = 0 ;
+				scene.add( plane1 );
+				
+				const circle = new THREE.Mesh( new THREE.CircleGeometry ( 83, 100 )
+					, new THREE.MeshBasicMaterial( {color: 0xd7d6d6, side: THREE.DoubleSide} ) );
+				
+				circle.position.x = 3;
+				circle.position.y = 218;
+				circle.position.z = 85;
+				
+				circle.rotation.y = 0 ;
+				circle.rotation.x = 0 ;
+				circle.rotation.z = 0 ;
+				scene.add( circle );
+				
+				
+				
+
+			}
+
+			function onWindowResize() {
+
+				windowHalfX = window.innerWidth / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function onDocumentKeyDown( event ) {
+
+				if ( firstLetter ) {
+
+					firstLetter = false;
+					text = '';
+
+				}
+
+				const keyCode = event.keyCode;
+
+				// backspace
+
+				if ( keyCode === 8 ) {
+
+					event.preventDefault();
+
+					text = text.substring( 0, text.length - 1 );
+					refreshText();
+
+					return false;
+
+				}
+
+			}
+
+			function onDocumentKeyPress( event ) {
+
+				const keyCode = event.which;
+
+				// backspace
+
+				if ( keyCode === 8 ) {
+
+					event.preventDefault();
+
+				} else {
+
+					const ch = String.fromCharCode( keyCode );
+					text += ch;
+
+					refreshText();
+
+				}
+
+			}
+
+			function createText() {
+
+				textGeo1 = new THREE.TextGeometry( "子", {
+
+					font: font,
+					size: size,
+					height: height,
+					curveSegments: curveSegments,
+
+					bevelThickness: bevelThickness,
+					bevelSize: bevelSize,
+					bevelEnabled: true
+
+				} );
+
+				
+				textMesh1 = new THREE.Mesh( textGeo1, material );
+
+				textMesh1.position.x = -10;
+				textMesh1.position.y = 180;
+				textMesh1.position.z = 95;
+
+				textMesh1.rotation.x = 0;
+				textMesh1.rotation.y = Math.PI * 2;
+				textMesh1.userData = { URL: "https://github.com/NTUT-CG-Lab/cg2021f-hw01-su8691"};
+
+				group.add( textMesh1 );
+
+				textGeo2 = new THREE.TextGeometry( "丑", {
+
+					font: font,
+					size: size,
+					height: height,
+					curveSegments: curveSegments,
+
+					bevelThickness: bevelThickness,
+					bevelSize: bevelSize,
+					bevelEnabled: true
+
+				} );
+
+				
+				textMesh2 = new THREE.Mesh( textGeo2, material );
+
+				textMesh2.position.x = 20;
+				textMesh2.position.y = 170;
+				textMesh2.position.z = 90;
+
+				textMesh2.rotation.x = 0;
+				textMesh2.rotation.y = Math.PI * 2;
+				textMesh2.userData = { URL: "https://github.com/NTUT-CG-Lab"};
+
+				group.add( textMesh2 );
+				
+				
+				textGeo3 = new THREE.TextGeometry( "寅", {
+
+					font: font,
+					size: size,
+					height: height,
+					curveSegments: curveSegments,
+
+					bevelThickness: bevelThickness,
+					bevelSize: bevelSize,
+					bevelEnabled: true
+
+				} );
+
+				
+				textMesh3 = new THREE.Mesh( textGeo3, material );
+
+				textMesh3.position.x = 45;
+				textMesh3.position.y = 150;
+				textMesh3.position.z = 90;
+
+				textMesh3.rotation.x = 0;
+				textMesh3.rotation.y = Math.PI * 2;
+				textMesh3.userData = { URL: "https://github.com/NTUT-CG-Lab"};
+
+				group.add( textMesh3 );
+				
+				textGeo4 = new THREE.TextGeometry( "卯", {
+
+					font: font,
+					size: size,
+					height: height,
+					curveSegments: curveSegments,
+
+					bevelThickness: bevelThickness,
+					bevelSize: bevelSize,
+					bevelEnabled: true
+
+				} );
+
+				
+				textMesh4 = new THREE.Mesh( textGeo4, material );
+
+				textMesh4.position.x = 60;
+				textMesh4.position.y = 120;
+				textMesh4.position.z = 95;
+
+				textMesh4.rotation.x = 0;
+				textMesh4.rotation.y = Math.PI * 2;
+				textMesh4.userData = { URL: "https://github.com/NTUT-CG-Lab"};
+
+				group.add( textMesh4 );
+				
+				textGeo5 = new THREE.TextGeometry( "辰", {
+
+					font: font,
+					size: size,
+					height: height,
+					curveSegments: curveSegments,
+
+					bevelThickness: bevelThickness,
+					bevelSize: bevelSize,
+					bevelEnabled: true
+
+				} );
+
+				
+				textMesh5 = new THREE.Mesh( textGeo5, material );
+
+				textMesh5.position.x = 45;
+				textMesh5.position.y = 85;
+				textMesh5.position.z = 90;
+
+				textMesh5.rotation.x = 0;
+				textMesh5.rotation.y = Math.PI * 2;
+				textMesh5.userData = { URL: "https://github.com/NTUT-CG-Lab"};
+
+				group.add( textMesh5 );
+				
+				
+				textGeo6 = new THREE.TextGeometry( "巳", {
+
+					font: font,
+					size: size,
+					height: height,
+					curveSegments: curveSegments,
+
+					bevelThickness: bevelThickness,
+					bevelSize: bevelSize,
+					bevelEnabled: true
+
+				} );
+
+				
+				textMesh6 = new THREE.Mesh( textGeo6, material );
+
+				textMesh6.position.x = 20;
+				textMesh6.position.y = 65;
+				textMesh6.position.z = 90;
+
+				textMesh6.rotation.x = 0;
+				textMesh6.rotation.y = Math.PI * 2;
+				textMesh6.userData = { URL: "https://github.com/NTUT-CG-Lab"};
+
+				group.add( textMesh6 );
+				
+				textGeo7 = new THREE.TextGeometry( "午", {
+
+					font: font,
+					size: size,
+					height: height,
+					curveSegments: curveSegments,
+
+					bevelThickness: bevelThickness,
+					bevelSize: bevelSize,
+					bevelEnabled: true
+
+				} );
+
+				
+				textMesh7 = new THREE.Mesh( textGeo7, material );
+
+				textMesh7.position.x = -10;
+				textMesh7.position.y = 50;
+				textMesh7.position.z = 95;
+
+				textMesh7.rotation.x = 0;
+				textMesh7.rotation.y = Math.PI * 2;
+				textMesh7.userData = { URL: "https://github.com/NTUT-CG-Lab"};
+
+				group.add( textMesh7 );
+				
+				textGeo8 = new THREE.TextGeometry( "未", {
+
+					font: font,
+					size: size,
+					height: height,
+					curveSegments: curveSegments,
+
+					bevelThickness: bevelThickness,
+					bevelSize: bevelSize,
+					bevelEnabled: true
+
+				} );
+
+				
+				textMesh8 = new THREE.Mesh( textGeo8, material );
+
+				textMesh8.position.x = -40;
+				textMesh8.position.y = 65;
+				textMesh8.position.z = 90;
+
+				textMesh8.rotation.x = 0;
+				textMesh8.rotation.y = Math.PI * 2;
+				textMesh8.userData = { URL: "https://github.com/NTUT-CG-Lab"};
+
+				group.add( textMesh8 );
+				
+				textGeo9 = new THREE.TextGeometry( "申", {
+
+					font: font,
+					size: size,
+					height: height,
+					curveSegments: curveSegments,
+
+					bevelThickness: bevelThickness,
+					bevelSize: bevelSize,
+					bevelEnabled: true
+
+				} );
+
+				
+				textMesh9 = new THREE.Mesh( textGeo9, material );
+
+				textMesh9.position.x = -60;
+				textMesh9.position.y = 85;
+				textMesh9.position.z = 90;
+
+				textMesh9.rotation.x = 0;
+				textMesh9.rotation.y = Math.PI * 2;
+				textMesh9.userData = { URL: "https://github.com/NTUT-CG-Lab"};
+
+				group.add( textMesh9 );
+				
+				textGeo10 = new THREE.TextGeometry( "酉", {
+
+					font: font,
+					size: size,
+					height: height,
+					curveSegments: curveSegments,
+
+					bevelThickness: bevelThickness,
+					bevelSize: bevelSize,
+					bevelEnabled: true
+
+				} );
+
+				
+				textMesh10 = new THREE.Mesh( textGeo10, material );
+
+				textMesh10.position.x = -75;
+				textMesh10.position.y = 120;
+				textMesh10.position.z = 95;
+
+				textMesh10.rotation.x = 0;
+				textMesh10.rotation.y = Math.PI * 2;
+				textMesh10.userData = { URL: "https://github.com/NTUT-CG-Lab"};
+
+				group.add( textMesh10 );
+				
+				textGeo11 = new THREE.TextGeometry( "戌", {
+
+					font: font,
+					size: size,
+					height: height,
+					curveSegments: curveSegments,
+
+					bevelThickness: bevelThickness,
+					bevelSize: bevelSize,
+					bevelEnabled: true
+
+				} );
+
+				
+				textMesh11 = new THREE.Mesh( textGeo11, material );
+
+				textMesh11.position.x = -60;
+				textMesh11.position.y = 150;
+				textMesh11.position.z = 90;
+
+				textMesh11.rotation.x = 0;
+				textMesh11.rotation.y = Math.PI * 2;
+				textMesh11.userData = { URL: "https://github.com/NTUT-CG-Lab"};
+
+				group.add( textMesh11 );
+				
+				textGeo12 = new THREE.TextGeometry( "亥", {
+
+					font: font,
+					size: size,
+					height: height,
+					curveSegments: curveSegments,
+
+					bevelThickness: bevelThickness,
+					bevelSize: bevelSize,
+					bevelEnabled: true
+
+				} );
+
+				
+				textMesh12 = new THREE.Mesh( textGeo12, material );
+
+				textMesh12.position.x = -40;
+				textMesh12.position.y = 170;
+				textMesh12.position.z = 90;
+
+				textMesh12.rotation.x = 0;
+				textMesh12.rotation.y = Math.PI * 2;
+				textMesh12.userData = { URL: "https://github.com/NTUT-CG-Lab"};
+
+				group.add( textMesh12 );
+				
+				textGeo13 = new THREE.TextGeometry( "高等計算機圖學作業", {
+
+					font: font,
+					size: size,
+					height: height,
+					curveSegments: curveSegments,
+
+					bevelThickness: bevelThickness,
+					bevelSize: bevelSize,
+					bevelEnabled: false
+
+				} );
+
+				
+				textMesh13 = new THREE.Mesh( textGeo13, 
+					new THREE.MeshBasicMaterial( {color: 0x000000, side: THREE.DoubleSide} ) );
+
+				textMesh13.position.x = -90;
+				textMesh13.position.y = 30;
+				textMesh13.position.z = 150;
+				
+				textMesh13.rotation.y = 0 ;
+				textMesh13.rotation.x = 75 ;
+				textMesh13.rotation.z = 0 ;
+				textMesh13.userData = { URL: "https://myweb.ntut.edu.tw/~tjhsieh/c/cg/cg2021f/syllabus/index.html"};
+				
+
+				group.add( textMesh13 );
+
+			}
+
+			function refreshText() {
+
+				group.remove( textMesh1 );
+				if ( mirror ) group.remove( textMesh2 );
+
+				if ( ! text ) return;
+
+				createText();
+
+			}
+
+			function onPointerDown( event ) {
+
+				if ( event.isPrimary === false ) return;
+
+				pointerXOnPointerDown = event.clientX - windowHalfX;
+				targetRotationOnPointerDown = targetRotation;
+
+				document.addEventListener( 'pointermove', onPointerMove );
+				document.addEventListener( 'pointerup', onPointerUp );
+
+			}
+
+			function onPointerMove( event ) {
+
+				if ( event.isPrimary === false ) return;
+
+				pointerX = event.clientX - windowHalfX;
+
+				targetRotation = targetRotationOnPointerDown + ( pointerX - pointerXOnPointerDown ) * 0.02;
+
+			}
+
+			function onPointerUp() {
+
+				if ( event.isPrimary === false ) return;
+
+				document.removeEventListener( 'pointermove', onPointerMove );
+				document.removeEventListener( 'pointerup', onPointerUp );
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+			//	group.rotation.y += ( targetRotation - group.rotation.y ) * 0.05;
+
+				camera.lookAt( cameraTarget );
+
+				renderer.render( scene, camera );
+
+			}
+			
+			
+			
+			function score() {
+			
+				// 建構子 ScoreOutputer 接受一個字串，該字串為 csv 的檔案名稱
+				// 以下面範例，檔名就為 "109598105(總分: 6).csv"
+				so = new ScoreOutputer("109598100");
+				so.installCSS(function(){
+				// 安裝 bootstrap 的 css，如果在 html 上方引用 bootstrap 5.1.1 的話就不用使用 installCSS ，注意一定要 bootstrap css 5.1.1 版
+				// installCSS 接收一個 callback 當作參數，作為成功安裝 bootstrap css 的回呼函式
+	
+				//加入項目，分數，完成狀況
+				//第一個參數為 項目名稱
+				//第2個參數為 項目分數
+				//第3個參數為 完成狀況，有完成 true/未完成 false
+				//有幾個項目就呼叫幾個 addChild
+				//addChild 要比 renderModal 先呼叫
+				so.addChild("創建場景", 2, false);
+				so.addChild("讀取字形檔", 2, false);
+				so.addChild("將地支以圓圈排列", 2, false);
+				so.addChild("滑鼠點擊地支可分別跳轉網頁", 1, false);
+				so.addChild("顯示高等計算機圖學作業", 1, false);
+				so.addChild("時鐘效果", 1, false);
+				so.addChild("任何ply模形格式", 1, false);
+
+				//產生自評表，參數如下所示
+				so.renderModal(
+					//1. 自評表插入位置 (預設 document.body)
+					document.body,
+					//2. 自評表背景 (預設紅色)
+					'rgba(100,45,58,1)', 
+					//3. 自評表文字顏色 (預設白色)
+					'white', 
+					//4. 自評表文字大小 (預設 14pt)
+					'15pt', 
+					//5. 自評表 checkbox 文字大小 (預設多少忘了)
+					'15px', 
+					//6. 自評表標題 (預設 "自我評分表")
+					dialogTitle='自我評分表'
+				);
+			
+				//設定下載按鈕 <-- 一定要呼叫這個函數，不然沒有下載功能
+				so.installDownloadBtn();
+		
+				//產生 "開啟自評表按鈕"
+				so.renderBtn(
+					//自評表按鈕插入位置
+					document.querySelector("#info"),
+					//自評表按鈕文字
+					"開啟自評表"
+				);
+				});
+			
+			}
+			
+			var raycaster = new THREE.Raycaster();
+			var mouse = new THREE.Vector2();
+
+			function onMouseClick( event ) {
+	
+			//通過滑鼠點選的位置計算出raycaster所需要的點的位置，以螢幕中心為原點，值的範圍為-1到1.
+
+			mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+			mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+			// 通過滑鼠點的位置和當前相機的矩陣計算出raycaster
+			raycaster.setFromCamera( mouse, camera );
+
+			// 獲取raycaster直線和所有模型相交的陣列集合
+			var intersects = raycaster.intersectObjects( group.children );
+
+			console.log(intersects);
+
+			//將所有的相交的模型的顏色設定為紅色，如果只需要將第一個觸發事件，那就陣列的第一個模型改變顏色即可
+			
+			
+			if (intersects.length > 0) {
+				window.open(intersects[0].object.userData.URL);
+			}
+			
+			/*
+			for ( var i = 0; i < intersects.length; i++ ) {
+
+				window.open(intersects[0].object.userData.URL);
+				//intersects[ i ].object.material.color.set( 0xff0000 );
+
+			}
+			*/
+		}
+
+		window.addEventListener( 'click', onMouseClick, false );
+
+		</script>
+
+	</body>
+</html>
